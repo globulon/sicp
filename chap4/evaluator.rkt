@@ -38,6 +38,9 @@
 (define (extract-assignement-value exp)
   (caddr exp))
 
+(define (make-lambda parameters body) 
+        (cons 'lambda (cons parameters body)))
+
 (define (definition? exp)
   (tagged-list? exp 'define))
 
@@ -280,6 +283,26 @@
             (else (add-var! (cdr vars) (cdr vals)))))
     (add-var! (frame-variables frame) (frame-values frame))))
 
+(define (make-application f args)
+  (cons f args))
+
+(define (let? exp)
+  (tagged-list 'let exp))
+
+;;; (let ((var1 exp1) (var2 exp2)) (body))
+;;; ((lambda (var1 var2) (body)) (exp1 exp2))
+(define (let->procedure exp)
+  (define (assignements) (cadr exp))
+  (define (extract-body) (cddr exp))
+  (define (extract-vars) (map car (cadr exp)))
+  (define (extract-args) (map cadr (cadr exp)))
+  (define (extract-lambda)
+    (make-lambda (extract-vars)
+                 (extract-body)))
+  (make-application (extract-lambda)
+                    (extract-args)))
+
+
 (define (primitive? exp)
   (tagged-list? exp 'primitive))
 
@@ -288,6 +311,7 @@
 
 (define (apply-primitive-proc proc args)
   (apply (primitive-implementation proc) args))
+
 
 (define (apply-proc procedure arguments)
   (cond ((primitive? procedure) 
@@ -307,7 +331,8 @@
         ((assignement? exp) (eval-assignement exp env))
         ((definition? exp) (eval-definition exp env))
         ((if? exp) (eval-if exp env))
-        ((lambda? exp)
+        ((let? exp) (eval-exp (let->procedure exp) env))
+        ((lambda? exp) 
          (make-procedure (extract-lambda-parameters exp)
                          (extract-lambda-body exp)
                          env))
