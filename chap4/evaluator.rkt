@@ -1,5 +1,10 @@
 ;;;#lang r5rs
 
+(define (filter p? xs)
+  (cond ((null? xs) '())
+        ((p? (car xs)) (cons (car xs) (filter p? (cdr xs))))
+        (else (filter p? (cdr xs)))))
+
 (define (error reason . args)
   (display "Error: ")
   (display reason)
@@ -22,7 +27,7 @@
   (if (pair? exp)
       (eq? (car exp) tag)
       #f))
-
+ 
 (define (quoted? exp)
   (tagged-list? exp 'quote))
 
@@ -62,7 +67,7 @@
   (cadr exp))
 
 (define (extract-lambda-body exp)
-  (caddr exp))
+  (cddr exp))
 
 (define (self-evaluating? exp)
   (cond ((number? exp) #t)
@@ -196,7 +201,7 @@
   'ok)
 
 (define (make-procedure args body env)
-  (list 'procedure args body env))
+  (list 'procedure args (scan-out-defines body) env))
 
 (define (compound-procedure? exp)
   (tagged-list? exp 'procedure))
@@ -241,6 +246,8 @@
 (define (lookup-variable v base-env)
   (define (look-up vars vals)
     (cond ((null? vars) '())
+          ((and (eq? (car vars) v) (eq? '*unassigned* (list (car vals)))) 
+           (error "*unassigned variable*: " v))
           ((eq? (car vars) v) (list (car vals)))
           (else (look-up (cdr vars) (cdr vals)))))
   (define (loop-env env)
@@ -254,6 +261,21 @@
                 (car result))))))
   (loop-env base-env))
 
+(define (make-let params body)
+  (cons 'let (cons params body)))
+
+(define (scan-out-defines body)
+  (define (unassigned-vars defines) (map cadr defines))
+  (define (make-unassigned v) (list v '*unassigned*))
+  (define (extract-defines) (filter definition? body))
+  (define (extract-not-defines) (filter (lambda (exp) (not (definition? exp))) body))
+  (define (make-assignements defines)
+    (map (lambda (define) (cons 'set! (cdr define))) defines))
+  (let ((defines (extract-defines)) (rest-body (extract-not-defines)))
+    (let ((vars (unassigned-vars defines)))
+      (make-let (map make-unassigned vars)
+                (append (make-assignements defines)
+                        rest-body)))))
 
 (define (set-variable-value! var val base-env)
   (define (set-frame-variable! vars vals)
