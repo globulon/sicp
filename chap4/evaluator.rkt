@@ -189,7 +189,7 @@
 (define (eval-assignement exp env)
   (set-variable-value! 
    (extract-assignement-variable exp)
-   (extract-assignement-value exp)set-variable-value!
+   (extract-assignement-value exp)
    env)
   'ok)
 
@@ -262,7 +262,7 @@
   (loop-env base-env))
 
 (define (make-let params body)
-  (cons 'let (cons params body)))
+  (cons 'let (list params body)))
 
 (define (scan-out-defines body)
   (define (unassigned-vars defines) (map cadr defines))
@@ -335,6 +335,23 @@
   (apply (primitive-implementation proc) args))
 
 
+(define (letrec? exp)
+  (tagged-list? 'letrec exp))
+
+;;(letrec ((x a) (y b)) body)
+;; (let ((x unsassigned) (y unassigned) (set! x a) (set))
+(define (letrec->let exp)
+  (define params (cadr exp))
+  (define body (cddr exp))
+  (define (make-unassigned-params)
+    (map (lambda (p) (list (car p) '*unassigned*)) params))
+  (define (make-assignements)
+    (map (lambda (p) (cons 'set! p)) params))
+  (define (make-body)
+    (make-begin (append (make-assignements) body)))
+  (make-let (make-unassigned-params)
+            (make-body)))
+
 (define (apply-proc procedure arguments)
   (cond ((primitive? procedure) 
          (apply-primitive-proc procedure arguments))
@@ -354,6 +371,7 @@
         ((definition? exp) (eval-definition exp env))
         ((if? exp) (eval-if exp env))
         ((let? exp) (eval-exp (let->procedure exp) env))
+        ((letrec? exp) (eval-exp (letrec->let exp) env))
         ((lambda? exp) 
          (make-procedure (extract-lambda-parameters exp)
                          (extract-lambda-body exp)
