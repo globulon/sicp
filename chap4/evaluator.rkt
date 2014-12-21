@@ -363,26 +363,43 @@
            arguments
            (extract-environment procedure))))))
 
+(define (analyze-self-evaluating exp)
+  (lambda (env) exp))
+
+(define (analyze-quoted exp)
+  (let ((analyzed (extract-quotation-text exp)))
+    (lambda (env) analyzed)))
+
+(define (analyze-variable exp)
+  (lambda (env) (lookup-variable exp env)))
+
+;;(set! x <exp>)
+(define (analyze-assignement exp)
+  (let ((var (extract-assignement-variable exp))
+        (pending-value (analyze (extract-assignement-value exp))))
+    (lambda (env) 
+      (set-variable-value! var (pending-value env) env))))
+
+(define (analyze exp)
+    (cond 
+      ((self-evaluating? exp) (analyze-self-evaluating exp))
+      ((variable? exp) (analyze-variable exp))
+      ((quoted? exp) (analyze-quoted exp))
+      ((assignement? exp) (analyze-assignement exp))
+      ((definition? exp) (analyze-definition exp))
+      ((if? exp) (analyze-if exp))
+      ((let? exp) (analyze (let->procedure exp)))
+      ((letrec? exp) (analyze (letrec->let exp)))
+      ((lambda? exp) (analyze-lambda exp))
+      ((begin? exp)
+       (analyze-sequence (get-begin-actions exp)))
+      ((cond? exp) (analyze (cond->if exp)))
+      ((application? exp) (analyze-app exp))
+      (else (error "Unknown expression -- EVAL" exp))))
+
+
 (define (eval-exp exp env)
-  (cond ((self-evaluating? exp) exp)
-        ((variable? exp) (lookup-variable exp env))
-        ((quoted? exp) (extract-quotation-text exp))
-        ((assignement? exp) (eval-assignement exp env))
-        ((definition? exp) (eval-definition exp env))
-        ((if? exp) (eval-if exp env))
-        ((let? exp) (eval-exp (let->procedure exp) env))
-        ((letrec? exp) (eval-exp (letrec->let exp) env))
-        ((lambda? exp) 
-         (make-procedure (extract-lambda-parameters exp)
-                         (extract-lambda-body exp)
-                         env))
-        ((begin? exp)
-         (eval-sequence (get-begin-actions exp) env))
-        ((cond? exp) (eval-exp (cond->if exp) env))
-        ((application? exp) 
-         (apply-proc (eval-exp (operator exp) env)
-                     (list-of-values (operands exp) env)))
-        (else (error "Unknown expression -- EVAL" exp))))
+  ((analyze exp) env))
 
 (define primitive-procedures
   (list (list 'car car)
