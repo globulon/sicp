@@ -189,7 +189,7 @@
 (define (eval-assignement exp env)
   (set-variable-value! 
    (extract-assignement-variable exp)
-   (extract-assignement-value exp)
+   (eval-exp (extract-assignement-value exp) env)
    env)
   'ok)
 
