@@ -196,7 +196,7 @@
 (define (eval-definition exp env)
   (define-variable! 
     (extract-variable-name exp)
-    (extract-variable-value exp)
+    (eval-exp (extract-variable-value exp) env)
     env)
   'ok)
 
