@@ -380,6 +380,62 @@
     (lambda (env) 
       (set-variable-value! var (pending-value env) env))))
 
+;;(define x <exp>)
+;;(define (f x) (...))
+(define (analyze-definition exp)
+  (let ((var (extract-variable-name  exp))
+        (pending-value (analyze (extract-variable-value exp))))
+    (lambda (env) 
+      (define-variable! var (pending-value env) env))))
+
+(define (analyze-if exp)
+  (let ((pred (extract-predicate exp))
+        (conq (extract-if-consequent exp))
+        (altr (extract-if-alternative exp)))
+    (lambda (env)
+      (if (pred env)
+          (conq env)
+          (altr env)))))
+        
+(define (analyze-lambda exp)
+  (let ((params (extract-lambda-params exp))
+        (body (extract-lambda-body exp)))
+    (lambda (env) 
+      (make-procedure params body env)))) 
+
+(define (analyze-seq exps)
+  (define (chain first-proc sec-proc)
+    (lambda (env)
+      (first-proc env) (sec-proc env)))
+  (define (chain-calls next-proc rest-procs)
+    (if (null? rest-procs)
+        next-proc
+        (chain-calls (chain next-proc (car rest-procs)) 
+                     (cdr rest-procs))))
+  (let ((procs (map analyze exps)))
+    (if (null? procs)
+        (error "empty sequence -- ANALYZE")
+        (chain-calls (car procs) (cdr procs)))))
+
+
+(define (run-procedure procedure arguments)
+  (cond ((primitive? procedure) 
+         (apply-primitive-proc procedure arguments))
+        ((compound-procedure? procedure)
+         ((extract-body procedure)
+          (extend-environment
+           (extract-parameters procedure)
+           arguments
+           (extract-environment procedure))))
+        (else (error "Unknown procedure type" proc))))
+
+(define (analyze-app exp)
+  (let ((fproc (operator exp))
+        (fargs (map analyze (operands exp))))
+    (lambda (env)
+      (run-procedure (fproc env)
+                     (map (lambda (arg) (arg env)) fargs)))))
+
 (define (analyze exp)
     (cond 
       ((self-evaluating? exp) (analyze-self-evaluating exp))
