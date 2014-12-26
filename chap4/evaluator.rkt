@@ -309,7 +309,7 @@
   (cons f args))
 
 (define (let? exp)
-  (tagged-list 'let exp))
+  (tagged-list? 'let exp))
 
 ;;; (let ((var1 exp1) (var2 exp2)) (body))
 ;;; ((lambda (var1 var2) (body)) (exp1 exp2))
@@ -357,11 +357,11 @@
          (apply-primitive-proc procedure arguments))
         ((compound-procedure? procedure)
          (eval-sequence 
-          (extract-body procedure)
+          (procedure-body procedure)
           (extend-environment
-           (extract-parameters procedure)
+           (procedure-parameters procedure)
            arguments
-           (extract-environment procedure))))))
+           (procedure-environment procedure))))))
 
 (define (eval-exp exp env)
   (cond ((self-evaluating? exp) exp)
@@ -373,7 +373,7 @@
         ((let? exp) (eval-exp (let->procedure exp) env))
         ((letrec? exp) (eval-exp (letrec->let exp) env))
         ((lambda? exp) 
-         (make-procedure (extract-lambda-parameters exp)
+         (make-procedure (extract-lambda-params exp)
                          (extract-lambda-body exp)
                          env))
         ((begin? exp)
