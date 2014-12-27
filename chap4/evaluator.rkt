@@ -144,7 +144,7 @@
   (cons 'begin seq))
 
 (define (cond? exp)
-  (tagged-list? 'cond exp))
+  (tagged-list? exp 'cond))
 
 ;;;(cond ((p) do) ((p2) do2) )
 (define (cond-clauses exp) (cdr exp))
@@ -201,7 +201,7 @@
   'ok)
 
 (define (make-procedure args body env)
-  (list 'procedure args (scan-out-defines body) env))
+  (list 'procedure args body env))
 
 (define (compound-procedure? exp)
   (tagged-list? exp 'procedure))
@@ -309,7 +309,7 @@
   (cons f args))
 
 (define (let? exp)
-  (tagged-list? 'let exp))
+  (tagged-list? exp 'let))
 
 ;;; (let ((var1 exp1) (var2 exp2)) (body))
 ;;; ((lambda (var1 var2) (body)) (exp1 exp2))
@@ -336,7 +336,7 @@
 
 
 (define (letrec? exp)
-  (tagged-list? 'letrec exp))
+  (tagged-list? exp 'letrec))
 
 ;;(letrec ((x a) (y b)) body)
 ;; (let ((x unsassigned) (y unassigned) (set! x a) (set))
@@ -441,3 +441,5 @@
       (anounce-output output-prompt)
       (user-print output)))
   (driver-loop))
+
+;;;(driver-loop)
