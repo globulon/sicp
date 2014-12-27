@@ -201,7 +201,7 @@
   'ok)
 
 (define (make-procedure args body env)
-  (list 'procedure args body env))
+  (list 'procedure args (scan-out-defines body) env))
 
 (define (compound-procedure? exp)
   (tagged-list? exp 'procedure))
@@ -275,7 +275,7 @@
     (let ((vars (unassigned-vars defines)))
       (make-let (map make-unassigned vars)
                 (append (make-assignements defines)
-                        rest-body)))))
+                        (make-begin rest-body))))))
 
 (define (set-variable-value! var val base-env)
   (define (set-frame-variable! vars vals)
