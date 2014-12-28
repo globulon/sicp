@@ -58,7 +58,7 @@
   (if (symbol? (cadr exp))
       (caddr exp)
       (make-lambda (cdadr exp)
-                   (caddr exp))))
+                   (cddr exp))))
 
 (define (lambda? exp)
   (tagged-list? exp 'lambda))
@@ -92,11 +92,17 @@
 (define (rest-operands exps)
   (cdr exps))
 
-(define (list-of-values exps env)
+(define (list-of-arg-values exps env)
   (if (no-operands? exps)
       '()
-      (cons (eval-exp (first-operand exps) env)
-            (list-of-values (rest-operands exps) env))))
+      (cons (actual-value (first-operand exps) env)
+            (list-of-arg-values (rest-operands exps) env))))
+
+(define (list-of-delayed-args exps env)
+  (if (no-operands? exps)
+      '()
+      (cons (delay-it (first-operand exps) env)
+            (list-of-delayed-args (rest-operands exps) env))))
 
 (define (if? exp)
   (tagged-list? exp 'if))
@@ -116,7 +122,7 @@
   (list 'if predicate consequent alternate))
 
 (define (eval-if exp env)
-  (if (true? (eval-exp (extract-predicate exp) env))
+  (if (true? (actual-value (extract-predicate exp) env))
       (eval-exp (extract-if-consequent exp) env)
       (eval-exp (extract-if-alternative exp) env)))
 
@@ -201,7 +207,7 @@
   'ok)
 
 (define (make-procedure args body env)
-  (list 'procedure args (scan-out-defines body) env))
+  (list 'procedure args body env))
 
 (define (compound-procedure? exp)
   (tagged-list? exp 'procedure))
@@ -352,16 +358,52 @@
   (make-let (make-unassigned-params)
             (make-body)))
 
-(define (apply-proc procedure arguments)
-  (cond ((primitive? procedure) 
-         (apply-primitive-proc procedure arguments))
+(define (apply-proc procedure arguments env)
+  (cond ((primitive? procedure)
+         (let ((arg-values (list-of-arg-values arguments env)))
+           (apply-primitive-proc procedure arg-values)))
         ((compound-procedure? procedure)
          (eval-sequence 
           (procedure-body procedure)
           (extend-environment
            (procedure-parameters procedure)
-           arguments
-           (procedure-environment procedure))))))
+           (list-of-delayed-args arguments env)
+           (procedure-environment procedure))))
+        (else (error "Unknown PROCEDURE Type" procedure))))
+
+(define (actual-value exp env)
+  (force-it (eval-exp exp env)))
+
+;;;Forces a (thunk exp env)
+(define (force-it obj)
+  (cond ((thunk? obj) 
+         (let ((evaluated (actual-value (thunk-exp obj) 
+                             (thunk-env obj))))
+               (set-car! obj 'evaluated-thunk)
+               (set-car! (cdr obj) evaluated)
+               (set-cdr! (cdr obj) '())
+           evaluated))
+        ((evaluated-thunk? obj)
+         (thunk-value obj))
+        (else obj)))
+
+(define (delay-it exp env)
+  (list 'thunk exp env))
+
+(define (thunk? exp)
+  (tagged-list? exp 'thunk))
+
+(define (thunk-exp t)
+  (cadr t))
+
+(define (thunk-env t)
+  (caddr t))
+
+(define (evaluated-thunk? t)
+  (tagged-list? t 'evaluated-thunk))
+
+(define (thunk-value evaluated)
+  (cadr evaluated))
 
 (define (eval-exp exp env)
   (cond ((self-evaluating? exp) exp)
@@ -380,8 +422,9 @@
          (eval-sequence (get-begin-actions exp) env))
         ((cond? exp) (eval-exp (cond->if exp) env))
         ((application? exp) 
-         (apply-proc (eval-exp (operator exp) env)
-                     (list-of-values (operands exp) env)))
+         (apply-proc (actual-value (operator exp) env)
+                     (operands exp) 
+                     env))
         (else (error "Unknown expression -- EVAL" exp))))
 
 (define primitive-procedures
@@ -437,7 +480,7 @@
 (define (driver-loop)
   (prompt-for-input input-prompt)
   (let ((input (read)))
-    (let ((output (eval-exp input global-environment)))
+    (let ((output (actual-value input global-environment)))
       (anounce-output output-prompt)
       (user-print output)))
   (driver-loop))
