@@ -164,7 +164,7 @@
   (cdr clause))
 
 (define (cond-else-clause? clause)
-  (equal? (con-predicate clause) 'else))
+  (equal? (cond-predicate clause) 'else))
 
 (define (cond->if exp)
   (expand-clauses (cond-clauses exp)))
@@ -172,14 +172,14 @@
 (define (expand-clauses clauses)
   (cond ((null? clauses) 'false)
         ((cond-else-clause? (car clauses))
-         (if (null? (rest clauses))
+         (if (null? (cdr clauses))
              (sequence->exp (cond-actions (car clauses)))
              (error "*ELSE* clause must be last clause")))
         (else 
          (let ((clause (car clauses)))
            (make-if (cond-predicate clause)
-                    (sequence-exp (cond-actions clause))
-                    (expand-clauses (rest clauses)))))))
+                    (sequence->exp (cond-actions clause))
+                    (expand-clauses (cdr clauses)))))))
 
 (define (true? exp)
   (not (eq? exp #f)))
@@ -428,10 +428,13 @@
         (else (error "Unknown expression -- EVAL" exp))))
 
 (define primitive-procedures
-  (list (list 'car car)
-        (list 'cdr cdr)
-        (list 'cons cons)
+  (list ;(list 'car car)
+        ;(list 'cdr cdr)
+        ;(list 'cons cons)
+        (list '= =)
+        (list 'null? null?)
         (list 'append append)
+        (list '- -)
         (list '+ +)
         (list '* *)))
 
@@ -441,6 +444,16 @@
 (define (primitive-procedure-objects)
   (map (lambda (proc) (list 'primitive (cadr proc)))
        primitive-procedures))
+
+;(define (cons head rest) (lambda (op) (op head rest)))
+;(define (car z)(z (lambda (h r) h)))
+;(define (cons z) (z (lambda (h r) r)))
+;(define (item-ref n items) (if (= 0 n) (car items) (item-ref (- n 1) (cdr items))))
+;(define (map proc items) (if (null? items) '() (cons (proc (car items)) (map proc (cdr items)))))
+;(define (scale-list items factor) (map (lambda (item) (* factor item)) items))
+;(define (add-lists l1 l2) (cond ((null? l1) l2) ((null? l2) l1) (else (cons (+ (car l1) (car l2)) (add-lists (cdr l1) (cdr l2))))))
+;(define ones (cons 1 ones))
+;(define integers (cons 1 (add-lists ones integers)))
 
 (define (setup-environment)
   (let ((initial-env
@@ -486,3 +499,12 @@
   (driver-loop))
 
 ;;;(driver-loop)
+(eval-exp '(define (cons h r) (lambda (op) (op h r))) global-environment)
+(eval-exp '(define (car z) (z (lambda (h r) h))) global-environment)
+(eval-exp '(define (cdr z) (z (lambda (h r) r))) global-environment)
+(eval-exp '(define (item-ref n items) (if (= 0 n) (car items) (item-ref (- n 1) (cdr items)))) global-environment)
+(eval-exp '(define (map proc items) (if (null? items) '() (cons (proc (car items)) (map proc (cdr items))))) global-environment)
+(eval-exp '(define (scale-list items factor) (map (lambda (item) (* factor item)) items)) global-environment)
+(eval-exp '(define (add-lists l1 l2) (cond ((null? l1) l2) ((null? l2) l1) (else (cons (+ (car l1) (car l2)) (add-lists (cdr l1) (cdr l2)))))) global-environment)
+(eval-exp '(define ones (cons 1 ones)) global-environment)
+(eval-exp '(define integers (cons 1 (add-lists ones integers))) global-environment)
