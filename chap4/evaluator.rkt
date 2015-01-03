@@ -58,7 +58,7 @@
   (if (symbol? (cadr exp))
       (caddr exp)
       (make-lambda (cdadr exp)
-                   (caddr exp))))
+                   (cddr exp))))
 
 (define (lambda? exp)
   (tagged-list? exp 'lambda))
@@ -166,14 +166,14 @@
 (define (expand-clauses clauses)
   (cond ((null? clauses) 'false)
         ((cond-else-clause? (car clauses))
-         (if (null? (rest clauses))
+         (if (null? (cdr clauses))
              (sequence->exp (cond-actions (car clauses)))
              (error "*ELSE* clause must be last clause")))
         (else 
          (let ((clause (car clauses)))
            (make-if (cond-predicate clause)
                     (sequence-exp (cond-actions clause))
-                    (expand-clauses (rest clauses)))))))
+                    (expand-clauses (cdr clauses)))))))
 
 (define (true? exp)
   (not (eq? exp #f)))
