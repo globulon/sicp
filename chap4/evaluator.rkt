@@ -463,7 +463,8 @@
           (list 'fletcher fletcher)
           (list 'miller miller)
           (list 'smith smith))))
-    
+ 
+;;; ex 4.40
 (define (multiple-dwelling-floor)
   (let ((cooper (amb 2 3 4 5))
         (miller (amb 1 2 3 4 5)))
@@ -483,6 +484,55 @@
                 (list 'smith smith)))))))
   
     
+;;; in essence ex 4.41
+  (define (flatten xss)
+    (if (null? xss) 
+        '()
+        (append (car xss) (flatten (cdr xss)))))
+
+(define (mix xs yss)
+  (flatten (map (lambda (x)
+               (map (lambda (y) (cons x y)) yss))
+             xs)))
+
+(define (combine xss)
+  (define (unflatten xs) (map (lambda (x) (list x)) xs))
+
+  (if (null? (cdr xss)) 
+      (unflatten (car xss))
+      (let ((current (car xss))
+            (next (combine (cdr xss))))
+        (mix current next))))
+
+(define (has-item? x xs)
+  (cond ((null? xs) #f)
+        ((= (car xs) x) #t)
+        (else (has-item? x (cdr xs)))))
+
+(define (distinct? xs)
+  (cond ((null? xs) #t)
+        ((null? (cdr xs)) #t)
+        (else (and (not (has-item? (car xs) (cdr xs)))
+                   (distinct? (cdr xs))))))
+
+(define (multiple-dwelling-floor-classic)
+  (define (not-neighbours xs)    
+    (not (or (= (car xs) (abs (- (cadr xs) 1)))
+             (= (car xs) (+ (cadr xs) 1)))))
+  (let ((step-one (combine '((2 3 4 5) (1 2 3 4 5)))))
+    (let ((cooper-miller (filter (lambda (comb) (> (cadr comb) (car comb))) step-one)))
+      (let ((step-two (mix '(2 3 4) cooper-miller)))
+        (let ((fletcher-cooper-miller (filter not-neighbours step-two)))
+          (let ((step-three (mix '(1 2 3 4 5) fletcher-cooper-miller)))
+            (let ((smith-fletcher-cooper-miller (filter not-neighbours step-three)))
+              (let ((step-four (mix '(1 2 3 4) smith-fletcher-cooper-miller)))
+                (let ((result (car (filter distinct? step-four))))
+                  (list (list 'baker (car result))
+                        (list 'cooper (cadddr result))
+                        (list 'fletcher (caddr result))
+                        (list 'miller (car (cddddr result)))
+                        (list 'smith (cadr result))))))))))))
 
 
-;;;(driver-loop)
+
+
