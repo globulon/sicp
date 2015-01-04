@@ -5,6 +5,7 @@
         ((p? (car xs)) (cons (car xs) (filter p? (cdr xs))))
         (else (filter p? (cdr xs)))))
 
+
 (define (require p)
   (if (not p) (amb)))
 
@@ -150,3 +151,43 @@
           (list 'joan joan)
           (list 'kitty kitty)
           (list 'mary mary))))
+
+;;4.43 fathers and daugthers
+;; moore 1 - downing 2 - hall 3 - hood 4 - parker 5
+;; mary    - lorna     - gabrielle - melissa - rosalind
+(define (fathers-and-daugthers)
+  (define (father-of daughter)
+    (cond ((= daughter 2) 'downing)
+          ((= daughter 3) 'hall)
+          (else 'parker)))
+  (let ((lorna (amb 2 3 5))
+        (rosalind (amb 2 5))
+        (gabrielle (amb 2 3)))
+    (require (or (= 5 rosalind) (= 5 lorna)))
+    (require (distinct? lorna rosalind gabrielle))
+    (father-of lorna)))
+
+;;4.44 eight queens
+(define (eight-queens n)
+  (define (generate-position)
+    (list (an-integer-between 1 n)
+          (an-integer-between 1 n)))
+  (define (row queen) (car queen))
+  (define (col queen) (cadr queen))
+  (define (slope first-queen second-queen)
+    (abs (/ (- (col first-queen) (col second-queen)) 
+            (- (row first-queen) (row second-queen)))))
+  (define (assert-position first-queen second-queen)
+    (require (not (= (col first-queen) (col second-queen))))
+    (require (not (= (row first-queen) (row second-queen))))
+    (require (not (= 1 (slope first-queen second-queen)))))
+  (define (assert-positions queen queens)
+    (for-each (lambda (other) (assert-position queen other)) 
+              queens))
+  (define (loop n queens)
+    (if (= n 0)
+        queens
+        (let ((queen (generate-position)))
+          (assert-positions queen queens)
+          (loop (- n 1) (cons queen queens)))))
+  (loop n '()))
