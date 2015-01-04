@@ -110,6 +110,7 @@
         (else (and (not (has-item? (car xs) (cdr xs)))
                    (distinct? (cdr xs))))))
 
+;;4.41 classic approach makes thing heavier to read 
 (define (multiple-dwelling-floor-classic)
   (define (not-neighbours xs)    
     (not (or (= (car xs) (abs (- (cadr xs) 1)))
@@ -127,3 +128,25 @@
                         (list 'fletcher (caddr result))
                         (list 'miller (car (cddddr result)))
                         (list 'smith (cadr result))))))))))))
+
+;;4.42
+(define (liars)
+  (define (xor first-affirmation second-affirmation)
+    (or (and first-affirmation (not second-affirmation))
+        (and (not first-affirmation) second-affirmation)))
+  (let ((betty (amb 1 2 3 4 5))
+        (ethel (amb 1 2 3 4 5))
+        (joan (amb 1 2 3 4 5))
+        (kitty (amb 1 2 3 4 5))
+        (mary (amb 1 2 3 4 5)))   
+    (require (xor (= 3 betty ) (= kitty 2)))
+    (require (xor (= 1 ethel ) (= joan 2)))
+    (require (xor (= 3 joan ) (= ethel 5)))
+    (require (xor (= 2 kitty ) (= mary 4)))
+    (require (xor (= 4 mary ) (= betty 1)))
+    (require (distinct? betty ethel joan kitty mary))
+    (list (list 'betty betty)
+          (list 'ethel ethel)
+          (list 'joan joan)
+          (list 'kitty kitty)
+          (list 'mary mary))))
