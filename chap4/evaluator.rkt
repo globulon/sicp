@@ -58,7 +58,7 @@
   (if (symbol? (cadr exp))
       (caddr exp)
       (make-lambda (cdadr exp)
-                   (caddr exp))))
+                   (cddr exp))))
 
 (define (lambda? exp)
   (tagged-list? exp 'lambda))
@@ -144,7 +144,7 @@
   (cons 'begin seq))
 
 (define (cond? exp)
-  (tagged-list? 'cond exp))
+  (tagged-list? exp 'cond))
 
 ;;;(cond ((p) do) ((p2) do2) )
 (define (cond-clauses exp) (cdr exp))
@@ -166,14 +166,14 @@
 (define (expand-clauses clauses)
   (cond ((null? clauses) 'false)
         ((cond-else-clause? (car clauses))
-         (if (null? (rest clauses))
+         (if (null? (cdr clauses))
              (sequence->exp (cond-actions (car clauses)))
              (error "*ELSE* clause must be last clause")))
         (else 
          (let ((clause (car clauses)))
            (make-if (cond-predicate clause)
                     (sequence-exp (cond-actions clause))
-                    (expand-clauses (rest clauses)))))))
+                    (expand-clauses (cdr clauses)))))))
 
 (define (true? exp)
   (not (eq? exp #f)))
@@ -196,7 +196,7 @@
 (define (eval-definition exp env)
   (define-variable! 
     (extract-variable-name exp)
-    (extract-variable-value exp)
+    (eval-exp (extract-variable-value exp) env)
     env)
   'ok)
 
@@ -336,7 +336,7 @@
 
 
 (define (letrec? exp)
-  (tagged-list? 'letrec exp))
+  (tagged-list? exp 'letrec))
 
 ;;(letrec ((x a) (y b)) body)
 ;; (let ((x unsassigned) (y unassigned) (set! x a) (set))
@@ -357,11 +357,11 @@
          (apply-primitive-proc procedure arguments))
         ((compound-procedure? procedure)
          (eval-sequence 
-          (extract-body procedure)
+          (procedure-body  procedure)
           (extend-environment
-           (extract-parameters procedure)
+           (procedure-parameters procedure)
            arguments
-           (extract-environment procedure))))))
+           (procedure-environment procedure))))))
 
 (define (analyze-self-evaluating exp)
   (lambda (env) exp))
